@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>חתימה על מסמך</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@500;700&family=Assistant:wght@400;600;700&display=swap">
+<style>
+/* דף חתימה לטלפון: המסמך למעלה, משטח חתימה למטה. צבעים לפי העסק (ערוסה – חול/חום, המרענן – זית) */
+:root { --bg: #FBF8F4; --paper: #FFFFFF; --ink: #3B2F25; --accent: #9C7A5B; --soft: #F3EADF; --line: #E4D6C6; --muted: #8A7766; --ok: #3f7a3a; --err: #a33a2a;
+  --display: "Frank Ruhl Libre", "David", serif; --body: "Assistant", "Segoe UI", Arial, sans-serif; color-scheme: light; }
+body.hameraanen { --bg: #FDFCF8; --ink: #2B301C; --accent: #4B5431; --soft: #F1F2EA; --line: #DDDFD0; --muted: #6A705A; }
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 17px; line-height: 1.6; }
+.wrap { max-width: 760px; margin: 0 auto; padding-block: max(20px, env(safe-area-inset-top)) 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 18px; }
+h1 { font-family: var(--display); color: var(--accent); font-size: clamp(24px, 6vw, 32px); margin: 0; line-height: 1.2; text-wrap: balance; }
+.sub { color: var(--muted); margin: 0; }
+.doc { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 8px; display: grid; gap: 8px; }
+.doc canvas { width: 100%; height: auto; display: block; border-radius: 6px; box-shadow: 0 1px 0 var(--line); }
+.doc a { color: var(--accent); font-weight: 600; text-align: center; padding: 6px; }
+.card { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: grid; gap: 14px; }
+label { font-weight: 600; font-size: 15px; display: grid; gap: 6px; }
+input[type=text], input[type=tel] { font: inherit; padding: 11px 12px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); width: 100%; }
+input:focus-visible, button:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent); outline-offset: 2px; }
+.pad-wrap { display: grid; gap: 8px; }
+.pad { position: relative; height: 190px; border: 2px dashed var(--line); border-radius: 10px; background: #fff; touch-action: none; }
+.pad canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.pad .hint { position: absolute; inset: 0; display: grid; place-items: center; color: #c4b6a8; font-size: 15px; pointer-events: none; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+.agree { display: flex; gap: 10px; align-items: flex-start; font-weight: 400; font-size: 15.5px; }
+.agree input { width: 22px; height: 22px; margin-top: 2px; accent-color: var(--accent); flex: none; }
+button { font: inherit; font-weight: 700; border-radius: 10px; border: 0; cursor: pointer; }
+.primary { background: var(--accent); color: #fff; padding: 14px 18px; font-size: 18px; width: 100%; }
+.primary:disabled { opacity: .5; cursor: default; }
+.ghost { background: transparent; color: var(--muted); padding: 6px 10px; text-decoration: underline; font-weight: 600; }
+.msg { border-radius: 10px; padding: 14px 16px; }
+.msg.err { background: #fbeceb; color: var(--err); }
+.msg.ok { background: #edf5ec; color: var(--ok); display: grid; gap: 8px; }
+.msg.ok a { color: var(--ok); font-weight: 700; }
+.legal { color: var(--muted); font-size: 13px; margin: 0; }
+.loading { color: var(--muted); text-align: center; padding: 30px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1 id="title">חתימה על מסמך</h1>
+    <p class="sub" id="sub">טוען את המסמך…</p>
+  </header>
+
+  <div id="error" class="msg err" hidden></div>
+
+  <section class="doc" id="doc" aria-label="המסמך"><div class="loading" id="docLoading">טוען את המסמך…</div></section>
+
+  <section class="card" id="form" hidden>
+    <label for="name">שם מלא
+      <input type="text" id="name" autocomplete="name" required>
+    </label>
+    <label for="idn">תעודת זהות (לא חובה)
+      <input type="tel" id="idn" inputmode="numeric" maxlength="9" autocomplete="off">
+    </label>
+    <div class="pad-wrap">
+      <div class="row"><b>חתימה</b><button type="button" class="ghost" id="clear">ניקוי</button></div>
+      <div class="pad" id="pad"><canvas id="sig"></canvas><div class="hint" id="hint">חתמי כאן עם האצבע</div></div>
+    </div>
+    <label class="agree" for="agree"><input type="checkbox" id="agree"> קראתי את המסמך ואני מאשרת את תוכנו</label>
+    <button type="button" class="primary" id="submit" disabled>חתימה ואישור</button>
+    <p class="legal">החתימה נשמרת יחד עם השם, התאריך והשעה, ומוטמעת במסמך. עותק חתום יישלח לבית העסק.</p>
+  </section>
+
+  <div id="done" class="msg ok" hidden></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+const API = "https://uxkyfcqydvjqumnuwlcb.supabase.co/functions/v1/assistant/sign";
+const token = new URLSearchParams(location.search).get("t") || "";
+const $ = (id) => document.getElementById(id);
+const fail = (m) => { $("error").textContent = m; $("error").hidden = false; $("docLoading").hidden = true; };
+let drew = false;
+
+async function load() {
+  if (!token) return fail("הקישור לא שלם. בקשו קישור חדש.");
+  let info;
+  try { const r = await fetch(`${API}/info?t=${encodeURIComponent(token)}`); info = await r.json(); if (!r.ok) return fail(info.error || "לא הצלחנו לטעון את המסמך."); }
+  catch { return fail("אין חיבור כרגע. נסו לרענן את הדף."); }
+  if (info.business === "hameraanen") document.body.classList.add("hameraanen");
+  $("title").textContent = info.title || "חתימה על מסמך";
+  document.title = info.title || "חתימה על מסמך";
+  $("sub").textContent = info.customer ? `לכבוד ${info.customer} · כדאי לקרוא עד הסוף לפני החתימה` : "כדאי לקרוא את המסמך עד הסוף לפני החתימה";
+  if (info.customer) $("name").value = info.customer;
+  if (info.signed_at) { $("sub").textContent = "המסמך כבר נחתם, תודה!"; showDone(info.signed_pdf); }
+  else $("form").hidden = false;
+  await renderPdf(info.pdf);
+  check();
+}
+
+async function renderPdf(url) {
+  try {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+    const pdf = await pdfjsLib.getDocument(url).promise;
+    $("docLoading").remove();
+    const width = Math.min($("doc").clientWidth - 16, 900);
+    for (let n = 1; n <= pdf.numPages; n++) {
+      const page = await pdf.getPage(n);
+      const base = page.getViewport({ scale: 1 }), scale = (width / base.width) * Math.min(2, window.devicePixelRatio || 1);
+      const vp = page.getViewport({ scale });
+      const c = document.createElement("canvas"); c.width = vp.width; c.height = vp.height;
+      $("doc").appendChild(c);
+      await page.render({ canvasContext: c.getContext("2d"), viewport: vp }).promise;
+    }
+    const a = document.createElement("a"); a.href = url; a.target = "_blank"; a.rel = "noopener"; a.textContent = "פתיחת המסמך בגודל מלא";
+    $("doc").appendChild(a);
+  } catch { $("docLoading").textContent = "לא הצלחנו להציג את המסמך כאן."; }
+}
+
+// משטח החתימה
+const pad = $("pad"), cv = $("sig"), ctx = cv.getContext("2d");
+function sizePad() {
+  const r = pad.getBoundingClientRect(), d = window.devicePixelRatio || 1, keep = drew ? cv.toDataURL() : null;
+  cv.width = r.width * d; cv.height = r.height * d; ctx.setTransform(d, 0, 0, d, 0, 0);
+  ctx.lineWidth = 2.6; ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.strokeStyle = "#141e46";
+  if (keep) { const img = new Image(); img.onload = () => ctx.drawImage(img, 0, 0, r.width, r.height); img.src = keep; }
+}
+let last = null;
+const pos = (e) => { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+cv.addEventListener("pointerdown", (e) => { cv.setPointerCapture(e.pointerId); last = pos(e); ctx.beginPath(); ctx.arc(last.x, last.y, 1.2, 0, Math.PI * 2); ctx.fillStyle = ctx.strokeStyle; ctx.fill(); });
+cv.addEventListener("pointermove", (e) => { if (!last) return; const p = pos(e); ctx.beginPath(); ctx.moveTo(last.x, last.y); ctx.lineTo(p.x, p.y); ctx.stroke(); last = p; if (!drew) { drew = true; $("hint").hidden = true; check(); } });
+const end = () => { last = null; };
+cv.addEventListener("pointerup", end); cv.addEventListener("pointercancel", end); cv.addEventListener("pointerleave", end);
+$("clear").onclick = () => { ctx.clearRect(0, 0, cv.width, cv.height); drew = false; $("hint").hidden = false; check(); };
+window.addEventListener("resize", sizePad);
+sizePad();
+
+function check() { $("submit").disabled = !(drew && $("agree").checked && $("name").value.trim()); }
+$("agree").onchange = check; $("name").oninput = check;
+
+// חיתוך החתימה לגבולות הדיו לפני השליחה
+function trimmed() {
+  const w = cv.width, h = cv.height, data = ctx.getImageData(0, 0, w, h).data;
+  let x0 = w, y0 = h, x1 = 0, y1 = 0;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (data[(y * w + x) * 4 + 3] > 0) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  const pad = 6; x0 = Math.max(0, x0 - pad); y0 = Math.max(0, y0 - pad); x1 = Math.min(w - 1, x1 + pad); y1 = Math.min(h - 1, y1 + pad);
+  const out = document.createElement("canvas"); out.width = x1 - x0 + 1; out.height = y1 - y0 + 1;
+  out.getContext("2d").drawImage(cv, x0, y0, out.width, out.height, 0, 0, out.width, out.height);
+  return out.toDataURL("image/png");
+}
+
+$("submit").onclick = async () => {
+  $("submit").disabled = true; $("submit").textContent = "שומרת…"; $("error").hidden = true;
+  try {
+    const r = await fetch(`${API}/submit`, { method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ t: token, name: $("name").value.trim(), id_number: $("idn").value.trim(), agree: $("agree").checked, signature: trimmed() }) });
+    const j = await r.json();
+    if (!r.ok) { fail(j.error || "השמירה לא הצליחה. נסו שוב."); $("submit").textContent = "חתימה ואישור"; check(); return; }
+    $("form").hidden = true; showDone(j.signed_pdf);
+  } catch { fail("אין חיבור כרגע. נסו שוב בעוד רגע."); $("submit").textContent = "חתימה ואישור"; check(); }
+};
+
+function showDone(link) {
+  $("done").innerHTML = "<b>תודה! המסמך נחתם ונשלח לבית העסק ✓</b>";
+  if (link) { const a = document.createElement("a"); a.href = link; a.target = "_blank"; a.rel = "noopener"; a.textContent = "להורדת העותק החתום"; $("done").appendChild(a); }
+  $("done").hidden = false;
+}
+
+load();
+</script>
+</body>
+</html>
